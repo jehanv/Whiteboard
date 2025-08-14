@@ -46,12 +46,3 @@ src/
 │   └── index.ts          # TypeScript type definitions
 └── App.tsx               # Main app component
 ```
-
-## Next Steps
-
-1. Implement freehand drawing tools
-2. Add color picker and styling controls
-3. Implement undo/redo functionality
-4. Add project save/load
-5. Implement real-time collaboration
-6. Add export functionality
