@@ -2,26 +2,6 @@
 
 A collaborative whiteboard application built with React, TypeScript, and Konva.js.
 
-## Features Implemented
-
-### Phase 1 (Complete)
-- ✅ **Project Setup**: React + TypeScript + Vite + Konva.js
-- ✅ **Infinite Canvas**: Pan and zoom functionality with mouse wheel
-- ✅ **Basic Shapes**: Rectangle, circle, line, text, and sticky notes
-- ✅ **Selection Tool**: Click to select, multi-select with Shift, selection box
-
-### Phase 2 (Partial)
-- ✅ **Object Manipulation**: Move, resize, rotate, and delete objects
-- ✅ **Keyboard Shortcuts**: Delete key to remove selected objects
-- 🔲 **Drawing Tools**: Pen, highlighter, eraser (pending)
-- 🔲 **Styling Options**: Color picker, stroke width, opacity (pending)
-- 🔲 **Undo/Redo**: Command history (pending)
-
-### Phase 3 (Pending)
-- 🔲 **Save/Load**: Project persistence
-- 🔲 **Export**: PNG/SVG export
-- 🔲 **Auto-save**: Automatic project saving
-
 ## Getting Started
 
 ```bash
