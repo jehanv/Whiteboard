@@ -1,0 +1,1989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FigJam Clone - Standalone</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden; }
+        .container { display: flex; height: 100vh; overflow: hidden; }
+        .toolbar { 
+            width: 200px; 
+            background-color: #f8f9fa; 
+            padding: 16px; 
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .toolbar h3 { margin: 0; font-size: 16px; color: #333; }
+        .tool-button {
+            padding: 12px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .tool-button.active {
+            background-color: #0066ff;
+            color: #fff;
+        }
+        .canvas-container { flex: 1; position: relative; overflow: hidden; }
+        #canvas { 
+            display: block;
+            cursor: crosshair;
+            background-color: #fafafa;
+        }
+        .properties { 
+            width: 200px; 
+            background-color: #f8f9fa; 
+            padding: 16px; 
+            border-left: 1px solid #e0e0e0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .properties h3 { margin: 0; font-size: 16px; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <h3>Tools</h3>
+            <button class="tool-button" id="select-tool">Select</button>
+            <button class="tool-button" id="pan-tool">Pan</button>
+            <button class="tool-button active" id="rectangle-tool">Rectangle</button>
+            <button class="tool-button" id="circle-tool">Ellipse</button>
+            <button class="tool-button" id="line-tool">Line</button>
+            <button class="tool-button" id="arrow-tool">Arrow</button>
+            <button class="tool-button" id="text-tool">Text</button>
+            <button class="tool-button" id="pen-tool">Pen</button>
+            <button class="tool-button" id="highlighter-tool">Highlighter</button>
+            <button class="tool-button" id="sticky-tool">Sticky Note</button>
+            <button class="tool-button" id="eraser-tool">Eraser</button>
+            <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 16px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px;">File</h3>
+                <button class="tool-button" id="save-btn" style="background: #28a745; color: white; margin-bottom: 8px;">Save Project</button>
+                <button class="tool-button" id="load-btn" style="background: #17a2b8; color: white; margin-bottom: 8px;">Load Project</button>
+                <button class="tool-button" id="export-png-btn" style="background: #ffc107; color: black; margin-bottom: 8px;">Export PNG</button>
+                <button class="tool-button" id="export-svg-btn" style="background: #fd7e14; color: white;">Export SVG</button>
+            </div>
+            <div style="margin-top: 20px;">
+                <p style="font-size: 12px; color: #666; margin: 0;">
+                    Shapes: <span id="shape-count">0</span>
+                </p>
+                <p style="font-size: 12px; color: #666; margin: 0;">
+                    Zoom: <span id="zoom-info">100%</span>
+                </p>
+                <p style="font-size: 12px; color: #666; margin: 0;" id="selected-info"></p>
+                <div style="margin-top: 10px; font-size: 10px; color: #999;">
+                    <p style="margin: 0;">Space+Drag: Pan</p>
+                    <p style="margin: 0;">Mouse Wheel: Zoom</p>
+                    <p style="margin: 0;">Shift+Click: Multi-select</p>
+                    <p style="margin: 0;">Cmd+C/V: Copy/Paste</p>
+                    <p style="margin: 0;">Delete: Remove</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="properties">
+            <h3>Properties</h3>
+            <div id="properties-content">
+                <p style="font-size: 14px; color: #666; margin-top: 16px;">No shape selected</p>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px;">Stroke Width</h4>
+                <input type="range" id="stroke-width" min="1" max="20" value="2" style="width: 100%; margin-bottom: 10px;">
+                <div style="text-align: center; font-size: 12px; margin-bottom: 15px;">Width: <span id="stroke-width-value">2</span>px</div>
+                
+                <h4 style="margin: 0 0 8px 0; font-size: 14px;">Text Formatting</h4>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size: 12px;">Font Size:</label>
+                    <input type="range" id="font-size" min="8" max="72" value="16" style="width: 100%; margin: 2px 0;">
+                    <div style="text-align: center; font-size: 12px;"><span id="font-size-value">16</span>px</div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <button id="bold-btn" style="padding: 4px 8px; margin-right: 4px; border: 1px solid #ccc; background: white; border-radius: 3px; font-weight: bold; cursor: pointer;">B</button>
+                    <button id="italic-btn" style="padding: 4px 8px; border: 1px solid #ccc; background: white; border-radius: 3px; font-style: italic; cursor: pointer;">I</button>
+                </div>
+                
+                <h4 style="margin: 0 0 8px 0; font-size: 14px;">Opacity</h4>
+                <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="1" style="width: 100%; margin-bottom: 5px;">
+                <div style="text-align: center; font-size: 12px; margin-bottom: 15px;"><span id="opacity-value">100</span>%</div>
+                
+                <h4 style="margin: 0 0 8px 0; font-size: 14px;">Current Colors</h4>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div id="current-fill" style="width: 30px; height: 30px; background: #ffffff; border: 2px solid #000; cursor: pointer; border-radius: 4px;"></div>
+                        <span style="font-size: 10px; margin-top: 2px;">Fill</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div id="current-stroke" style="width: 30px; height: 30px; background: #000000; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;"></div>
+                        <span style="font-size: 10px; margin-top: 2px;">Stroke</span>
+                    </div>
+                </div>
+                
+                <div id="color-mode" style="margin-bottom: 8px;">
+                    <button id="fill-mode" class="color-mode-btn" style="padding: 4px 8px; border: 1px solid #0066ff; background: #0066ff; color: white; border-radius: 3px; font-size: 12px; cursor: pointer;">Fill</button>
+                    <button id="stroke-mode" class="color-mode-btn" style="padding: 4px 8px; border: 1px solid #ccc; background: white; color: black; border-radius: 3px; font-size: 12px; cursor: pointer;">Stroke</button>
+                </div>
+                
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <div class="color-swatch" data-color="#000000" style="width: 20px; height: 20px; background: #000000; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#ff0000" style="width: 20px; height: 20px; background: #ff0000; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#00ff00" style="width: 20px; height: 20px; background: #00ff00; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#0000ff" style="width: 20px; height: 20px; background: #0000ff; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#ffff00" style="width: 20px; height: 20px; background: #ffff00; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#ff00ff" style="width: 20px; height: 20px; background: #ff00ff; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#00ffff" style="width: 20px; height: 20px; background: #00ffff; border: 1px solid #ccc; cursor: pointer;"></div>
+                    <div class="color-swatch" data-color="#ffffff" style="width: 20px; height: 20px; background: #ffffff; border: 1px solid #ccc; cursor: pointer;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class FigJamClone {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.shapes = [];
+                this.activeTool = 'rectangle';
+                this.isDrawing = false;
+                this.startPoint = null;
+                this.selectedShapeId = null;
+                
+                // Pan and zoom state
+                this.camera = { x: 0, y: 0, zoom: 1 };
+                this.isPanning = false;
+                this.lastPanPoint = null;
+                this.spacePressed = false;
+                
+                // Object manipulation state
+                this.isMovingObject = false;
+                this.moveStartPoint = null;
+                this.originalShapePositions = new Map();
+                
+                // Resize state
+                this.isResizing = false;
+                this.resizeHandle = null;
+                this.resizeStartPoint = null;
+                this.originalShapeSize = null;
+                
+                // Rotation state
+                this.isRotating = false;
+                this.rotationStartAngle = 0;
+                this.originalRotation = 0;
+                
+                // Clipboard
+                this.clipboard = [];
+                
+                // Drawing state
+                this.currentPath = null;
+                this.isDrawingPath = false;
+                
+                // Erasing state
+                this.isErasing = false;
+                this.eraserSize = 20;
+                
+                // Auto-save state
+                this.autoSaveInterval = null;
+                this.autoSaveTimeout = null;
+                this.lastSaveTime = Date.now();
+                
+                // Current colors for new shapes
+                this.currentFillColor = '#ffffff';
+                this.currentStrokeColor = '#000000';
+                this.colorMode = 'fill'; // 'fill' or 'stroke'
+                this.currentStrokeWidth = 2;
+                this.currentFontSize = 16;
+                this.currentBold = false;
+                this.currentItalic = false;
+                this.currentOpacity = 1;
+                
+                this.setupCanvas();
+                this.setupEvents();
+                this.updateColorIndicators();
+                this.updateColorModeButtons();
+                this.updateTextFormattingButtons();
+                this.loadAutoSave();
+                this.startAutoSave();
+                this.draw();
+            }
+            
+            setupCanvas() {
+                const resizeCanvas = () => {
+                    this.canvas.width = window.innerWidth - 400;
+                    this.canvas.height = window.innerHeight;
+                    this.draw();
+                };
+                
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+            }
+            
+            // Convert screen coordinates to world coordinates
+            screenToWorld(screenX, screenY) {
+                return {
+                    x: (screenX - this.camera.x) / this.camera.zoom,
+                    y: (screenY - this.camera.y) / this.camera.zoom
+                };
+            }
+            
+            // Get shape position for moving
+            getShapePosition(shape) {
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'circle':
+                    case 'text':
+                    case 'sticky':
+                        return { x: shape.x, y: shape.y };
+                    case 'line':
+                    case 'arrow':
+                        return { x: shape.x, y: shape.y, endX: shape.endX, endY: shape.endY };
+                    default:
+                        return { x: shape.x, y: shape.y };
+                }
+            }
+            
+            // Get shape size for resizing
+            getShapeSize(shape) {
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'sticky':
+                        return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+                    case 'circle':
+                        return { x: shape.x, y: shape.y, radiusX: shape.radiusX || shape.radius, radiusY: shape.radiusY || shape.radius };
+                    case 'text':
+                        return { x: shape.x, y: shape.y, fontSize: shape.fontSize };
+                    case 'line':
+                    case 'arrow':
+                        return { x: shape.x, y: shape.y, endX: shape.endX, endY: shape.endY };
+                    default:
+                        return { x: shape.x, y: shape.y };
+                }
+            }
+            
+            // Set shape position for moving
+            setShapePosition(shape, newPos, deltaX, deltaY) {
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'circle':
+                    case 'text':
+                    case 'sticky':
+                        shape.x = newPos.x + deltaX;
+                        shape.y = newPos.y + deltaY;
+                        break;
+                    case 'line':
+                    case 'arrow':
+                        shape.x = newPos.x + deltaX;
+                        shape.y = newPos.y + deltaY;
+                        shape.endX = newPos.endX + deltaX;
+                        shape.endY = newPos.endY + deltaY;
+                        break;
+                }
+            }
+            
+            // Draw resize handles for rectangles and circles
+            drawResizeHandles(x, y, width, height) {
+                const handleSize = 8 / this.camera.zoom;
+                const halfHandle = handleSize / 2;
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.strokeStyle = '#0066ff';
+                this.ctx.lineWidth = 2 / this.camera.zoom;
+                
+                // Corner handles
+                const corners = [
+                    { x: x - halfHandle, y: y - halfHandle }, // top-left
+                    { x: x + width - halfHandle, y: y - halfHandle }, // top-right
+                    { x: x + width - halfHandle, y: y + height - halfHandle }, // bottom-right
+                    { x: x - halfHandle, y: y + height - halfHandle } // bottom-left
+                ];
+                
+                // Side handles
+                const sides = [
+                    { x: x + width/2 - halfHandle, y: y - halfHandle }, // top
+                    { x: x + width - halfHandle, y: y + height/2 - halfHandle }, // right
+                    { x: x + width/2 - halfHandle, y: y + height - halfHandle }, // bottom
+                    { x: x - halfHandle, y: y + height/2 - halfHandle } // left
+                ];
+                
+                [...corners, ...sides].forEach(handle => {
+                    this.ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+                    this.ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+                });
+                
+                // Rotation handle (above the shape)
+                const rotationHandleY = y - 30 / this.camera.zoom;
+                const rotationHandleX = x + width/2;
+                
+                // Line to rotation handle
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + width/2, y);
+                this.ctx.lineTo(rotationHandleX, rotationHandleY);
+                this.ctx.stroke();
+                
+                // Rotation handle (circular)
+                this.ctx.beginPath();
+                this.ctx.arc(rotationHandleX, rotationHandleY, halfHandle, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+            
+            // Draw resize handles for lines (at endpoints)
+            drawLineHandles(x1, y1, x2, y2) {
+                const handleSize = 8 / this.camera.zoom;
+                const handleRadius = handleSize / 2;
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.strokeStyle = '#0066ff';
+                this.ctx.lineWidth = 2 / this.camera.zoom;
+                
+                // Start point handle
+                this.ctx.beginPath();
+                this.ctx.arc(x1, y1, handleRadius, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // End point handle
+                this.ctx.beginPath();
+                this.ctx.arc(x2, y2, handleRadius, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+            
+            // Draw arrow with arrowhead
+            drawArrow(x1, y1, x2, y2) {
+                const headlen = 15 / this.camera.zoom; // length of head in pixels
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                
+                // Draw the line
+                this.ctx.beginPath();
+                this.ctx.moveTo(x1, y1);
+                this.ctx.lineTo(x2, y2);
+                this.ctx.stroke();
+                
+                // Draw the arrowhead
+                this.ctx.beginPath();
+                this.ctx.moveTo(x2, y2);
+                this.ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                this.ctx.moveTo(x2, y2);
+                this.ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                this.ctx.stroke();
+            }
+            
+            // Check if point is over a resize handle
+            getResizeHandle(shape, worldPoint) {
+                if (!shape.selected) return null;
+                
+                const handleSize = 8 / this.camera.zoom;
+                const tolerance = handleSize;
+                
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'sticky':
+                        if (!shape.width || !shape.height) return null;
+                        
+                        const handles = [
+                            { type: 'nw', x: shape.x, y: shape.y },
+                            { type: 'ne', x: shape.x + shape.width, y: shape.y },
+                            { type: 'se', x: shape.x + shape.width, y: shape.y + shape.height },
+                            { type: 'sw', x: shape.x, y: shape.y + shape.height },
+                            { type: 'n', x: shape.x + shape.width/2, y: shape.y },
+                            { type: 'e', x: shape.x + shape.width, y: shape.y + shape.height/2 },
+                            { type: 's', x: shape.x + shape.width/2, y: shape.y + shape.height },
+                            { type: 'w', x: shape.x, y: shape.y + shape.height/2 }
+                        ];
+                        
+                        for (let handle of handles) {
+                            if (Math.abs(worldPoint.x - handle.x) < tolerance && 
+                                Math.abs(worldPoint.y - handle.y) < tolerance) {
+                                return handle.type;
+                            }
+                        }
+                        
+                        // Check rotation handle
+                        const rectRotationHandleY = shape.y - 30 / this.camera.zoom;
+                        const rectRotationHandleX = shape.x + shape.width/2;
+                        if (Math.abs(worldPoint.x - rectRotationHandleX) < tolerance && 
+                            Math.abs(worldPoint.y - rectRotationHandleY) < tolerance) {
+                            return 'rotate';
+                        }
+                        break;
+                        
+                    case 'circle':
+                        if (!shape.radiusX && !shape.radius) return null;
+                        
+                        const radiusX = shape.radiusX || shape.radius;
+                        const radiusY = shape.radiusY || shape.radius;
+                        
+                        const circleHandles = [
+                            { type: 'nw', x: shape.x - radiusX, y: shape.y - radiusY },
+                            { type: 'ne', x: shape.x + radiusX, y: shape.y - radiusY },
+                            { type: 'se', x: shape.x + radiusX, y: shape.y + radiusY },
+                            { type: 'sw', x: shape.x - radiusX, y: shape.y + radiusY },
+                            { type: 'n', x: shape.x, y: shape.y - radiusY },
+                            { type: 'e', x: shape.x + radiusX, y: shape.y },
+                            { type: 's', x: shape.x, y: shape.y + radiusY },
+                            { type: 'w', x: shape.x - radiusX, y: shape.y }
+                        ];
+                        
+                        for (let handle of circleHandles) {
+                            if (Math.abs(worldPoint.x - handle.x) < tolerance && 
+                                Math.abs(worldPoint.y - handle.y) < tolerance) {
+                                return handle.type;
+                            }
+                        }
+                        
+                        // Check rotation handle for ellipses
+                        const circleRotationHandleY = shape.y - radiusY - 30 / this.camera.zoom;
+                        const circleRotationHandleX = shape.x;
+                        if (Math.abs(worldPoint.x - circleRotationHandleX) < tolerance && 
+                            Math.abs(worldPoint.y - circleRotationHandleY) < tolerance) {
+                            return 'rotate';
+                        }
+                        break;
+                        
+                    case 'line':
+                    case 'arrow':
+                        if (shape.endX === undefined || shape.endY === undefined) return null;
+                        
+                        if (Math.abs(worldPoint.x - shape.x) < tolerance && 
+                            Math.abs(worldPoint.y - shape.y) < tolerance) {
+                            return 'start';
+                        }
+                        if (Math.abs(worldPoint.x - shape.endX) < tolerance && 
+                            Math.abs(worldPoint.y - shape.endY) < tolerance) {
+                            return 'end';
+                        }
+                        break;
+                        
+                    case 'text':
+                        if (!shape.text) return null;
+                        
+                        // Use similar rectangle-style handles for text
+                        const textHeight = shape.fontSize || 16;
+                        const textWidth = shape.text.length * 8; // rough estimate
+                        
+                        const textHandles = [
+                            { type: 'se', x: shape.x + textWidth, y: shape.y },
+                        ];
+                        
+                        for (let handle of textHandles) {
+                            if (Math.abs(worldPoint.x - handle.x) < tolerance && 
+                                Math.abs(worldPoint.y - handle.y) < tolerance) {
+                                return handle.type;
+                            }
+                        }
+                        break;
+                }
+                
+                return null;
+            }
+            
+            // Perform resize operation
+            performResize(shape, currentWorld) {
+                const deltaX = currentWorld.x - this.resizeStartPoint.x;
+                const deltaY = currentWorld.y - this.resizeStartPoint.y;
+                
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'sticky':
+                        this.resizeRectangle(shape, deltaX, deltaY);
+                        break;
+                    case 'circle':
+                        this.resizeCircle(shape, deltaX, deltaY);
+                        break;
+                    case 'line':
+                    case 'arrow':
+                        this.resizeLine(shape, currentWorld);
+                        break;
+                }
+            }
+            
+            // Resize rectangle based on handle
+            resizeRectangle(shape, deltaX, deltaY) {
+                const original = this.originalShapeSize;
+                
+                switch (this.resizeHandle) {
+                    case 'se': // bottom-right
+                        shape.width = Math.max(5, original.width + deltaX);
+                        shape.height = Math.max(5, original.height + deltaY);
+                        break;
+                    case 'nw': // top-left
+                        const newWidth = Math.max(5, original.width - deltaX);
+                        const newHeight = Math.max(5, original.height - deltaY);
+                        shape.x = original.x + (original.width - newWidth);
+                        shape.y = original.y + (original.height - newHeight);
+                        shape.width = newWidth;
+                        shape.height = newHeight;
+                        break;
+                    case 'ne': // top-right
+                        shape.width = Math.max(5, original.width + deltaX);
+                        const newH = Math.max(5, original.height - deltaY);
+                        shape.y = original.y + (original.height - newH);
+                        shape.height = newH;
+                        break;
+                    case 'sw': // bottom-left
+                        const newW = Math.max(5, original.width - deltaX);
+                        shape.x = original.x + (original.width - newW);
+                        shape.width = newW;
+                        shape.height = Math.max(5, original.height + deltaY);
+                        break;
+                    case 'e': // right
+                        shape.width = Math.max(5, original.width + deltaX);
+                        break;
+                    case 'w': // left
+                        const newWidt = Math.max(5, original.width - deltaX);
+                        shape.x = original.x + (original.width - newWidt);
+                        shape.width = newWidt;
+                        break;
+                    case 's': // bottom
+                        shape.height = Math.max(5, original.height + deltaY);
+                        break;
+                    case 'n': // top
+                        const newHeigh = Math.max(5, original.height - deltaY);
+                        shape.y = original.y + (original.height - newHeigh);
+                        shape.height = newHeigh;
+                        break;
+                }
+            }
+            
+            // Resize circle/ellipse based on handle
+            resizeCircle(shape, deltaX, deltaY) {
+                const original = this.originalShapeSize;
+                
+                switch (this.resizeHandle) {
+                    case 'se': // bottom-right
+                        shape.radiusX = Math.max(5, original.radiusX + deltaX);
+                        shape.radiusY = Math.max(5, original.radiusY + deltaY);
+                        break;
+                    case 'nw': // top-left
+                        shape.radiusX = Math.max(5, original.radiusX - deltaX);
+                        shape.radiusY = Math.max(5, original.radiusY - deltaY);
+                        break;
+                    case 'ne': // top-right
+                        shape.radiusX = Math.max(5, original.radiusX + deltaX);
+                        shape.radiusY = Math.max(5, original.radiusY - deltaY);
+                        break;
+                    case 'sw': // bottom-left
+                        shape.radiusX = Math.max(5, original.radiusX - deltaX);
+                        shape.radiusY = Math.max(5, original.radiusY + deltaY);
+                        break;
+                    case 'e': // right
+                        shape.radiusX = Math.max(5, original.radiusX + deltaX);
+                        break;
+                    case 'w': // left
+                        shape.radiusX = Math.max(5, original.radiusX - deltaX);
+                        break;
+                    case 's': // bottom
+                        shape.radiusY = Math.max(5, original.radiusY + deltaY);
+                        break;
+                    case 'n': // top
+                        shape.radiusY = Math.max(5, original.radiusY - deltaY);
+                        break;
+                }
+            }
+            
+            // Resize line based on handle
+            resizeLine(shape, currentWorld) {
+                if (this.resizeHandle === 'start') {
+                    shape.x = currentWorld.x;
+                    shape.y = currentWorld.y;
+                } else if (this.resizeHandle === 'end') {
+                    shape.endX = currentWorld.x;
+                    shape.endY = currentWorld.y;
+                }
+            }
+            
+            setupEvents() {
+                // Tool buttons
+                document.getElementById('select-tool').addEventListener('click', () => this.setTool('select'));
+                document.getElementById('pan-tool').addEventListener('click', () => this.setTool('pan'));
+                document.getElementById('rectangle-tool').addEventListener('click', () => this.setTool('rectangle'));
+                document.getElementById('circle-tool').addEventListener('click', () => this.setTool('circle'));
+                document.getElementById('line-tool').addEventListener('click', () => this.setTool('line'));
+                document.getElementById('arrow-tool').addEventListener('click', () => this.setTool('arrow'));
+                document.getElementById('text-tool').addEventListener('click', () => this.setTool('text'));
+                document.getElementById('pen-tool').addEventListener('click', () => this.setTool('pen'));
+                document.getElementById('highlighter-tool').addEventListener('click', () => this.setTool('highlighter'));
+                document.getElementById('sticky-tool').addEventListener('click', () => this.setTool('sticky'));
+                document.getElementById('eraser-tool').addEventListener('click', () => this.setTool('eraser'));
+                
+                // File management events
+                document.getElementById('save-btn').addEventListener('click', () => this.saveProject());
+                document.getElementById('load-btn').addEventListener('click', () => this.loadProject());
+                document.getElementById('export-png-btn').addEventListener('click', () => this.exportPNG());
+                document.getElementById('export-svg-btn').addEventListener('click', () => this.exportSVG());
+                
+                // Canvas events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
+                
+                // Keyboard events
+                window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+                window.addEventListener('keyup', (e) => this.handleKeyUp(e));
+                
+                // Color picker events
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', (e) => {
+                        const color = e.target.dataset.color;
+                        this.handleColorSwatchClick(color);
+                    });
+                });
+                
+                // Color mode events
+                document.getElementById('fill-mode').addEventListener('click', () => {
+                    this.setColorMode('fill');
+                });
+                document.getElementById('stroke-mode').addEventListener('click', () => {
+                    this.setColorMode('stroke');
+                });
+                
+                // Stroke width events
+                document.getElementById('stroke-width').addEventListener('input', (e) => {
+                    this.currentStrokeWidth = parseInt(e.target.value);
+                    document.getElementById('stroke-width-value').textContent = this.currentStrokeWidth;
+                    
+                    // Apply to selected shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected);
+                    if (selectedShapes.length > 0) {
+                        selectedShapes.forEach(shape => {
+                            shape.strokeWidth = this.currentStrokeWidth;
+                        });
+                        this.draw();
+                    }
+                });
+                
+                // Text formatting events
+                document.getElementById('font-size').addEventListener('input', (e) => {
+                    this.currentFontSize = parseInt(e.target.value);
+                    document.getElementById('font-size-value').textContent = this.currentFontSize;
+                    
+                    // Apply to selected text shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected && (s.type === 'text' || s.type === 'sticky'));
+                    if (selectedShapes.length > 0) {
+                        selectedShapes.forEach(shape => {
+                            shape.fontSize = this.currentFontSize;
+                        });
+                        this.draw();
+                    }
+                });
+                
+                document.getElementById('bold-btn').addEventListener('click', () => {
+                    this.currentBold = !this.currentBold;
+                    this.updateTextFormattingButtons();
+                    
+                    // Apply to selected text shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected && (s.type === 'text' || s.type === 'sticky'));
+                    if (selectedShapes.length > 0) {
+                        selectedShapes.forEach(shape => {
+                            shape.bold = this.currentBold;
+                        });
+                        this.draw();
+                    }
+                });
+                
+                document.getElementById('italic-btn').addEventListener('click', () => {
+                    this.currentItalic = !this.currentItalic;
+                    this.updateTextFormattingButtons();
+                    
+                    // Apply to selected text shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected && (s.type === 'text' || s.type === 'sticky'));
+                    if (selectedShapes.length > 0) {
+                        selectedShapes.forEach(shape => {
+                            shape.italic = this.currentItalic;
+                        });
+                        this.draw();
+                    }
+                });
+                
+                // Opacity events
+                document.getElementById('opacity').addEventListener('input', (e) => {
+                    this.currentOpacity = parseFloat(e.target.value);
+                    document.getElementById('opacity-value').textContent = Math.round(this.currentOpacity * 100);
+                    
+                    // Apply to selected shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected);
+                    if (selectedShapes.length > 0) {
+                        selectedShapes.forEach(shape => {
+                            shape.opacity = this.currentOpacity;
+                        });
+                        this.draw();
+                    }
+                });
+            }
+            
+            setTool(tool) {
+                this.activeTool = tool;
+                this.updateCursor();
+                
+                // Update button states
+                document.querySelectorAll('.tool-button').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(tool + '-tool').classList.add('active');
+            }
+            
+            updateCursor() {
+                if (this.isPanning) {
+                    this.canvas.style.cursor = 'grabbing';
+                } else if (this.isMovingObject) {
+                    this.canvas.style.cursor = 'move';
+                } else if (this.isRotating) {
+                    this.canvas.style.cursor = 'grab';
+                } else if (this.isResizing) {
+                    this.canvas.style.cursor = this.getResizeCursor(this.resizeHandle);
+                } else if (this.spacePressed || this.activeTool === 'pan') {
+                    this.canvas.style.cursor = 'grab';
+                } else if (this.activeTool === 'select') {
+                    this.canvas.style.cursor = 'default';
+                } else if (this.activeTool === 'eraser') {
+                    this.canvas.style.cursor = 'pointer';
+                } else {
+                    this.canvas.style.cursor = 'crosshair';
+                }
+            }
+            
+            // Get appropriate cursor for resize handle
+            getResizeCursor(handle) {
+                switch (handle) {
+                    case 'nw':
+                    case 'se':
+                        return 'nw-resize';
+                    case 'ne':
+                    case 'sw':
+                        return 'ne-resize';
+                    case 'n':
+                    case 's':
+                        return 'ns-resize';
+                    case 'e':
+                    case 'w':
+                        return 'ew-resize';
+                    case 'start':
+                    case 'end':
+                        return 'move';
+                    case 'rotate':
+                        return 'grab';
+                    default:
+                        return 'default';
+                }
+            }
+            
+            generateId() {
+                return 'shape-' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // Get shape center for rotation
+            getShapeCenter(shape) {
+                switch (shape.type) {
+                    case 'rectangle':
+                    case 'sticky':
+                        return {
+                            x: shape.x + (shape.width || 0) / 2,
+                            y: shape.y + (shape.height || 0) / 2
+                        };
+                    case 'circle':
+                        return { x: shape.x, y: shape.y };
+                    case 'text':
+                        return { x: shape.x, y: shape.y };
+                    case 'line':
+                    case 'arrow':
+                        return {
+                            x: (shape.x + (shape.endX || shape.x)) / 2,
+                            y: (shape.y + (shape.endY || shape.y)) / 2
+                        };
+                    default:
+                        return { x: shape.x, y: shape.y };
+                }
+            }
+            
+            // Adjust color brightness
+            adjustBrightness(color, amount) {
+                const hex = color.replace('#', '');
+                const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+                const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+                const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+                return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            }
+            
+            // Erase shapes at a point
+            eraseAtPoint(worldPoint) {
+                const eraserRadius = this.eraserSize / this.camera.zoom;
+                
+                // Find shapes to erase
+                const shapesToRemove = [];
+                
+                this.shapes.forEach(shape => {
+                    let shouldErase = false;
+                    
+                    switch (shape.type) {
+                        case 'rectangle':
+                        case 'sticky':
+                            if (shape.width && shape.height) {
+                                shouldErase = worldPoint.x >= shape.x - eraserRadius && 
+                                            worldPoint.x <= shape.x + shape.width + eraserRadius &&
+                                            worldPoint.y >= shape.y - eraserRadius && 
+                                            worldPoint.y <= shape.y + shape.height + eraserRadius;
+                            }
+                            break;
+                        case 'circle':
+                            const radiusX = shape.radiusX || shape.radius;
+                            const radiusY = shape.radiusY || shape.radius;
+                            if (radiusX && radiusY) {
+                                // Check if eraser overlaps with ellipse
+                                const dx = worldPoint.x - shape.x;
+                                const dy = worldPoint.y - shape.y;
+                                const ellipseCheck = (dx * dx) / ((radiusX + eraserRadius) * (radiusX + eraserRadius)) + 
+                                                   (dy * dy) / ((radiusY + eraserRadius) * (radiusY + eraserRadius));
+                                shouldErase = ellipseCheck <= 1;
+                            }
+                            break;
+                        case 'line':
+                        case 'arrow':
+                            if (shape.endX !== undefined && shape.endY !== undefined) {
+                                const distanceToLine = Math.abs((worldPoint.y - shape.y) * (shape.endX - shape.x) - 
+                                                               (worldPoint.x - shape.x) * (shape.endY - shape.y)) / 
+                                                     Math.sqrt((shape.endY - shape.y) ** 2 + (shape.endX - shape.x) ** 2);
+                                shouldErase = distanceToLine <= eraserRadius;
+                            }
+                            break;
+                        case 'text':
+                            if (shape.text) {
+                                const textHeight = shape.fontSize || 16;
+                                const textWidth = shape.text.length * 8;
+                                shouldErase = worldPoint.x >= shape.x - eraserRadius && 
+                                            worldPoint.x <= shape.x + textWidth + eraserRadius &&
+                                            worldPoint.y >= shape.y - textHeight - eraserRadius && 
+                                            worldPoint.y <= shape.y + eraserRadius;
+                            }
+                            break;
+                        case 'pen':
+                        case 'highlighter':
+                            if (shape.points && shape.points.length > 0) {
+                                shouldErase = shape.points.some(point => {
+                                    const distance = Math.sqrt((worldPoint.x - point.x) ** 2 + (worldPoint.y - point.y) ** 2);
+                                    return distance <= eraserRadius;
+                                });
+                            }
+                            break;
+                    }
+                    
+                    if (shouldErase) {
+                        shapesToRemove.push(shape.id);
+                    }
+                });
+                
+                // Remove shapes
+                if (shapesToRemove.length > 0) {
+                    this.shapes = this.shapes.filter(shape => !shapesToRemove.includes(shape.id));
+                    this.selectedShapeId = null;
+                    this.draw();
+                }
+            }
+            
+            // Save project to JSON file
+            saveProject() {
+                const projectData = {
+                    shapes: this.shapes,
+                    camera: this.camera,
+                    version: '1.0',
+                    timestamp: new Date().toISOString()
+                };
+                
+                const dataStr = JSON.stringify(projectData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `figjam-project-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            }
+            
+            // Load project from JSON file
+            loadProject() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const projectData = JSON.parse(e.target.result);
+                                
+                                // Validate the data structure
+                                if (projectData.shapes && Array.isArray(projectData.shapes)) {
+                                    this.shapes = projectData.shapes;
+                                    this.selectedShapeId = null;
+                                    
+                                    // Restore camera if available
+                                    if (projectData.camera) {
+                                        this.camera = projectData.camera;
+                                    }
+                                    
+                                    this.draw();
+                                    alert('Project loaded successfully!');
+                                } else {
+                                    alert('Invalid project file format.');
+                                }
+                            } catch (error) {
+                                alert('Error loading project: ' + error.message);
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+                input.click();
+            }
+            
+            // Export canvas as PNG
+            exportPNG() {
+                // Create a temporary canvas with white background
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = this.canvas.width;
+                tempCanvas.height = this.canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Fill with white background
+                tempCtx.fillStyle = '#ffffff';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Draw the current canvas content
+                tempCtx.drawImage(this.canvas, 0, 0);
+                
+                // Download the image
+                const link = document.createElement('a');
+                link.download = `figjam-export-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+                link.href = tempCanvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            // Export as SVG
+            exportSVG() {
+                const svgElements = [];
+                const viewBox = `0 0 ${this.canvas.width} ${this.canvas.height}`;
+                
+                this.shapes.forEach(shape => {
+                    const opacity = shape.opacity || 1;
+                    const strokeWidth = shape.strokeWidth || 2;
+                    
+                    switch (shape.type) {
+                        case 'rectangle':
+                        case 'sticky':
+                            if (shape.width && shape.height) {
+                                const x = shape.x * this.camera.zoom + this.camera.x;
+                                const y = shape.y * this.camera.zoom + this.camera.y;
+                                const width = shape.width * this.camera.zoom;
+                                const height = shape.height * this.camera.zoom;
+                                
+                                svgElements.push(`<rect x="${x}" y="${y}" width="${width}" height="${height}" ` +
+                                    `fill="${shape.fill}" stroke="${shape.stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />`);
+                            }
+                            break;
+                        case 'circle':
+                            const radiusX = shape.radiusX || shape.radius;
+                            const radiusY = shape.radiusY || shape.radius;
+                            if (radiusX && radiusY) {
+                                const cx = shape.x * this.camera.zoom + this.camera.x;
+                                const cy = shape.y * this.camera.zoom + this.camera.y;
+                                const rx = radiusX * this.camera.zoom;
+                                const ry = radiusY * this.camera.zoom;
+                                
+                                svgElements.push(`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ` +
+                                    `fill="${shape.fill}" stroke="${shape.stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />`);
+                            }
+                            break;
+                        case 'line':
+                        case 'arrow':
+                            if (shape.endX !== undefined && shape.endY !== undefined) {
+                                const x1 = shape.x * this.camera.zoom + this.camera.x;
+                                const y1 = shape.y * this.camera.zoom + this.camera.y;
+                                const x2 = shape.endX * this.camera.zoom + this.camera.x;
+                                const y2 = shape.endY * this.camera.zoom + this.camera.y;
+                                
+                                svgElements.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ` +
+                                    `stroke="${shape.stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />`);
+                            }
+                            break;
+                        case 'text':
+                            if (shape.text) {
+                                const x = shape.x * this.camera.zoom + this.camera.x;
+                                const y = shape.y * this.camera.zoom + this.camera.y;
+                                const fontSize = (shape.fontSize || 16) * this.camera.zoom;
+                                const fontWeight = shape.bold ? 'bold' : 'normal';
+                                const fontStyle = shape.italic ? 'italic' : 'normal';
+                                
+                                svgElements.push(`<text x="${x}" y="${y}" font-size="${fontSize}" ` +
+                                    `font-weight="${fontWeight}" font-style="${fontStyle}" ` +
+                                    `fill="${shape.fill}" opacity="${opacity}">${shape.text}</text>`);
+                            }
+                            break;
+                    }
+                });
+                
+                const svgContent = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${this.canvas.width}" height="${this.canvas.height}">\n${svgElements.join('\n')}\n</svg>`;
+                
+                const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `figjam-export-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.svg`;
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            }
+            
+            // Auto-save functionality
+            startAutoSave() {
+                // Auto-save every 30 seconds
+                this.autoSaveInterval = setInterval(() => {
+                    this.autoSave();
+                }, 30000);
+            }
+            
+            autoSave() {
+                try {
+                    const projectData = {
+                        shapes: this.shapes,
+                        camera: this.camera,
+                        version: '1.0',
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('figjam-autosave', JSON.stringify(projectData));
+                    this.lastSaveTime = Date.now();
+                    console.log('Auto-saved at', new Date().toLocaleTimeString());
+                } catch (error) {
+                    console.error('Auto-save failed:', error);
+                }
+            }
+            
+            // Load auto-saved data on startup
+            loadAutoSave() {
+                try {
+                    const saved = localStorage.getItem('figjam-autosave');
+                    if (saved) {
+                        const projectData = JSON.parse(saved);
+                        if (projectData.shapes && Array.isArray(projectData.shapes)) {
+                            // Ask user if they want to restore
+                            const restore = confirm('Found auto-saved work. Would you like to restore it?');
+                            if (restore) {
+                                this.shapes = projectData.shapes;
+                                if (projectData.camera) {
+                                    this.camera = projectData.camera;
+                                }
+                                this.draw();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load auto-save:', error);
+                }
+            }
+            
+            // Handle color swatch clicks
+            handleColorSwatchClick(color) {
+                const selectedShapes = this.shapes.filter(s => s.selected);
+                
+                if (selectedShapes.length > 0) {
+                    // Apply to selected shapes
+                    this.applyColorToSelected(color);
+                } else {
+                    // Set current color for new shapes
+                    if (this.colorMode === 'fill') {
+                        this.currentFillColor = color;
+                    } else {
+                        this.currentStrokeColor = color;
+                    }
+                    this.updateColorIndicators();
+                }
+            }
+            
+            // Apply color to selected shapes
+            applyColorToSelected(color) {
+                const selectedShapes = this.shapes.filter(s => s.selected);
+                if (selectedShapes.length > 0) {
+                    selectedShapes.forEach(shape => {
+                        if (this.colorMode === 'fill') {
+                            if (shape.type === 'text' || shape.type === 'pen' || shape.type === 'highlighter' || 
+                                shape.type === 'line' || shape.type === 'arrow') {
+                                // These shapes don't have fill, so apply to stroke
+                                shape.stroke = color;
+                            } else {
+                                shape.fill = color;
+                            }
+                        } else {
+                            shape.stroke = color;
+                        }
+                    });
+                    this.draw();
+                }
+            }
+            
+            // Set color mode (fill or stroke)
+            setColorMode(mode) {
+                this.colorMode = mode;
+                this.updateColorModeButtons();
+            }
+            
+            // Update color mode button styles
+            updateColorModeButtons() {
+                const fillBtn = document.getElementById('fill-mode');
+                const strokeBtn = document.getElementById('stroke-mode');
+                
+                if (this.colorMode === 'fill') {
+                    fillBtn.style.backgroundColor = '#0066ff';
+                    fillBtn.style.color = 'white';
+                    fillBtn.style.borderColor = '#0066ff';
+                    strokeBtn.style.backgroundColor = 'white';
+                    strokeBtn.style.color = 'black';
+                    strokeBtn.style.borderColor = '#ccc';
+                } else {
+                    strokeBtn.style.backgroundColor = '#0066ff';
+                    strokeBtn.style.color = 'white';
+                    strokeBtn.style.borderColor = '#0066ff';
+                    fillBtn.style.backgroundColor = 'white';
+                    fillBtn.style.color = 'black';
+                    fillBtn.style.borderColor = '#ccc';
+                }
+            }
+            
+            // Update current color indicators
+            updateColorIndicators() {
+                document.getElementById('current-fill').style.backgroundColor = this.currentFillColor;
+                document.getElementById('current-stroke').style.backgroundColor = this.currentStrokeColor;
+            }
+            
+            // Update text formatting button states
+            updateTextFormattingButtons() {
+                const boldBtn = document.getElementById('bold-btn');
+                const italicBtn = document.getElementById('italic-btn');
+                
+                boldBtn.style.backgroundColor = this.currentBold ? '#0066ff' : 'white';
+                boldBtn.style.color = this.currentBold ? 'white' : 'black';
+                
+                italicBtn.style.backgroundColor = this.currentItalic ? '#0066ff' : 'white';
+                italicBtn.style.color = this.currentItalic ? 'white' : 'black';
+            }
+            
+            draw() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Save context and apply camera transform
+                this.ctx.save();
+                this.ctx.translate(this.camera.x, this.camera.y);
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+                
+                // Draw infinite grid
+                const gridSize = 20;
+                const startX = Math.floor(-this.camera.x / this.camera.zoom / gridSize) * gridSize;
+                const endX = Math.ceil((this.canvas.width - this.camera.x) / this.camera.zoom / gridSize) * gridSize;
+                const startY = Math.floor(-this.camera.y / this.camera.zoom / gridSize) * gridSize;
+                const endY = Math.ceil((this.canvas.height - this.camera.y) / this.camera.zoom / gridSize) * gridSize;
+                
+                this.ctx.strokeStyle = '#f0f0f0';
+                this.ctx.lineWidth = 1 / this.camera.zoom;
+                
+                for (let x = startX; x <= endX; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, startY);
+                    this.ctx.lineTo(x, endY);
+                    this.ctx.stroke();
+                }
+                for (let y = startY; y <= endY; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(startX, y);
+                    this.ctx.lineTo(endX, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw shapes
+                this.shapes.forEach(shape => {
+                    // Apply opacity
+                    this.ctx.globalAlpha = shape.opacity || 1;
+                    
+                    this.ctx.fillStyle = shape.fill;
+                    this.ctx.strokeStyle = shape.selected ? '#0066ff' : shape.stroke;
+                    this.ctx.lineWidth = (shape.selected ? Math.max(3, (shape.strokeWidth || 2) + 1) : (shape.strokeWidth || 2)) / this.camera.zoom;
+                    
+                    // Apply rotation if shape has one
+                    if (shape.rotation && (shape.type === 'rectangle' || shape.type === 'circle' || shape.type === 'sticky')) {
+                        const center = this.getShapeCenter(shape);
+                        this.ctx.save();
+                        this.ctx.translate(center.x, center.y);
+                        this.ctx.rotate(shape.rotation);
+                        this.ctx.translate(-center.x, -center.y);
+                    }
+                    
+                    switch (shape.type) {
+                        case 'rectangle':
+                            if (shape.width && shape.height) {
+                                this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                                this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+                                
+                                // Draw resize handles for selected rectangles
+                                if (shape.selected) {
+                                    this.drawResizeHandles(shape.x, shape.y, shape.width, shape.height);
+                                }
+                            }
+                            break;
+                        case 'circle':
+                            if (shape.radiusX || shape.radius) {
+                                this.ctx.beginPath();
+                                // Support both old radius and new radiusX/radiusY
+                                const radiusX = shape.radiusX || shape.radius;
+                                const radiusY = shape.radiusY || shape.radius;
+                                this.ctx.ellipse(shape.x, shape.y, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                                this.ctx.fill();
+                                this.ctx.stroke();
+                                
+                                // Draw resize handles for selected ellipses
+                                if (shape.selected) {
+                                    const width = radiusX * 2;
+                                    const height = radiusY * 2;
+                                    this.drawResizeHandles(shape.x - radiusX, shape.y - radiusY, width, height);
+                                    
+                                    // Additional rotation handle for ellipses (above the ellipse)
+                                    const circleRotHandleY = shape.y - radiusY - 30 / this.camera.zoom;
+                                    const circleRotHandleX = shape.x;
+                                    
+                                    // Line to rotation handle
+                                    this.ctx.strokeStyle = '#0066ff';
+                                    this.ctx.lineWidth = 2 / this.camera.zoom;
+                                    this.ctx.beginPath();
+                                    this.ctx.moveTo(shape.x, shape.y - radiusY);
+                                    this.ctx.lineTo(circleRotHandleX, circleRotHandleY);
+                                    this.ctx.stroke();
+                                    
+                                    // Rotation handle (circular)
+                                    this.ctx.fillStyle = '#ffffff';
+                                    this.ctx.strokeStyle = '#0066ff';
+                                    const handleSize = 8 / this.camera.zoom;
+                                    const halfHandle = handleSize / 2;
+                                    this.ctx.beginPath();
+                                    this.ctx.arc(circleRotHandleX, circleRotHandleY, halfHandle, 0, 2 * Math.PI);
+                                    this.ctx.fill();
+                                    this.ctx.stroke();
+                                }
+                            }
+                            break;
+                        case 'line':
+                            if (shape.endX !== undefined && shape.endY !== undefined) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(shape.x, shape.y);
+                                this.ctx.lineTo(shape.endX, shape.endY);
+                                this.ctx.stroke();
+                                
+                                // Draw resize handles for selected lines (at endpoints)
+                                if (shape.selected) {
+                                    this.drawLineHandles(shape.x, shape.y, shape.endX, shape.endY);
+                                }
+                            }
+                            break;
+                        case 'arrow':
+                            if (shape.endX !== undefined && shape.endY !== undefined) {
+                                this.drawArrow(shape.x, shape.y, shape.endX, shape.endY);
+                                
+                                // Draw resize handles for selected arrows (at endpoints)
+                                if (shape.selected) {
+                                    this.drawLineHandles(shape.x, shape.y, shape.endX, shape.endY);
+                                }
+                            }
+                            break;
+                        case 'sticky':
+                            if (shape.width && shape.height) {
+                                // Draw sticky note with corner fold
+                                const foldSize = 15 / this.camera.zoom;
+                                
+                                this.ctx.fillStyle = shape.fill;
+                                this.ctx.strokeStyle = shape.selected ? '#0066ff' : shape.stroke;
+                                
+                                // Main rectangle
+                                this.ctx.fillRect(shape.x, shape.y, shape.width - foldSize, shape.height);
+                                this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height - foldSize);
+                                
+                                // Corner fold triangle (darker)
+                                this.ctx.fillStyle = this.adjustBrightness(shape.fill, -20);
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(shape.x + shape.width - foldSize, shape.y);
+                                this.ctx.lineTo(shape.x + shape.width, shape.y + foldSize);
+                                this.ctx.lineTo(shape.x + shape.width - foldSize, shape.y + foldSize);
+                                this.ctx.closePath();
+                                this.ctx.fill();
+                                
+                                // Outline
+                                this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+                                
+                                // Text if present
+                                if (shape.text) {
+                                    this.ctx.fillStyle = '#333';
+                                    const fontStyle = (shape.italic ? 'italic ' : '') + (shape.bold ? 'bold ' : '') + `${shape.fontSize || 14}px Arial`;
+                                    this.ctx.font = fontStyle;
+                                    const lines = shape.text.split('\n');
+                                    const lineHeight = (shape.fontSize || 14) * 1.2;
+                                    lines.forEach((line, index) => {
+                                        this.ctx.fillText(line, shape.x + 8, shape.y + 20 + (index * lineHeight));
+                                    });
+                                }
+                                
+                                // Draw resize handles for selected sticky notes
+                                if (shape.selected) {
+                                    this.drawResizeHandles(shape.x, shape.y, shape.width, shape.height);
+                                }
+                            }
+                            break;
+                        case 'text':
+                            if (shape.text) {
+                                const fontStyle = (shape.italic ? 'italic ' : '') + (shape.bold ? 'bold ' : '') + `${shape.fontSize || 16}px Arial`;
+                                this.ctx.font = fontStyle;
+                                this.ctx.fillStyle = shape.fill;
+                                this.ctx.fillText(shape.text, shape.x, shape.y);
+                                
+                                // Draw resize handles for selected text
+                                if (shape.selected) {
+                                    const metrics = this.ctx.measureText(shape.text);
+                                    const textHeight = shape.fontSize || 16;
+                                    this.drawResizeHandles(shape.x, shape.y - textHeight, metrics.width, textHeight);
+                                }
+                            }
+                            break;
+                        case 'pen':
+                        case 'highlighter':
+                            if (shape.points && shape.points.length > 1) {
+                                this.ctx.strokeStyle = shape.stroke;
+                                this.ctx.lineWidth = (shape.strokeWidth || (shape.type === 'highlighter' ? 8 : 2)) / this.camera.zoom;
+                                this.ctx.lineCap = 'round';
+                                this.ctx.lineJoin = 'round';
+                                
+                                if (shape.type === 'highlighter') {
+                                    this.ctx.globalAlpha = 0.5;
+                                }
+                                
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                                for (let i = 1; i < shape.points.length; i++) {
+                                    this.ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                                }
+                                this.ctx.stroke();
+                                
+                                if (shape.type === 'highlighter') {
+                                    this.ctx.globalAlpha = 1.0;
+                                }
+                            }
+                            break;
+                    }
+                    
+                    // Restore rotation context if applied
+                    if (shape.rotation && (shape.type === 'rectangle' || shape.type === 'circle' || shape.type === 'sticky')) {
+                        this.ctx.restore();
+                    }
+                    
+                    // Reset opacity
+                    this.ctx.globalAlpha = 1;
+                });
+                
+                // Restore context
+                this.ctx.restore();
+                
+                this.updateUI();
+                
+                // Trigger auto-save after changes (debounced)
+                if (this.autoSaveTimeout) {
+                    clearTimeout(this.autoSaveTimeout);
+                }
+                this.autoSaveTimeout = setTimeout(() => {
+                    this.autoSave();
+                }, 5000); // Auto-save 5 seconds after last change
+            }
+            
+            updateUI() {
+                document.getElementById('shape-count').textContent = this.shapes.length;
+                document.getElementById('zoom-info').textContent = Math.round(this.camera.zoom * 100) + '%';
+                
+                const selectedInfo = document.getElementById('selected-info');
+                if (this.selectedShapeId) {
+                    const shape = this.shapes.find(s => s.id === this.selectedShapeId);
+                    selectedInfo.textContent = `Selected: ${shape?.type || 'none'}`;
+                    
+                    document.getElementById('properties-content').innerHTML = `
+                        <p style="font-size: 14px; color: #666; margin-top: 16px;">
+                            Shape selected: ${shape?.type || 'none'}
+                        </p>
+                        <p style="font-size: 12px; color: #999;">
+                            Press Delete to remove
+                        </p>
+                    `;
+                } else {
+                    selectedInfo.textContent = '';
+                    document.getElementById('properties-content').innerHTML = `
+                        <p style="font-size: 14px; color: #666; margin-top: 16px;">No shape selected</p>
+                    `;
+                }
+            }
+            
+            handleMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                
+                // Check for panning (space+click, cmd/ctrl+click, shift+click, or pan tool)
+                if (this.activeTool === 'pan' || 
+                    (e.button === 0 && (e.metaKey || e.ctrlKey || e.shiftKey || this.spacePressed)) || 
+                    e.button === 1) {
+                    this.isPanning = true;
+                    this.lastPanPoint = { x: screenX, y: screenY };
+                    this.updateCursor();
+                    e.preventDefault();
+                    return;
+                }
+                
+                const worldPoint = this.screenToWorld(screenX, screenY);
+                
+                if (this.activeTool === 'select') {
+                    // First check if we clicked on a resize handle of the selected shape
+                    const selectedShape = this.shapes.find(s => s.selected);
+                    if (selectedShape) {
+                        const resizeHandle = this.getResizeHandle(selectedShape, worldPoint);
+                        if (resizeHandle) {
+                            if (resizeHandle === 'rotate') {
+                                this.isRotating = true;
+                                this.rotationStartAngle = Math.atan2(worldPoint.y - this.getShapeCenter(selectedShape).y, 
+                                                                    worldPoint.x - this.getShapeCenter(selectedShape).x);
+                                this.originalRotation = selectedShape.rotation || 0;
+                            } else {
+                                this.isResizing = true;
+                                this.resizeHandle = resizeHandle;
+                                this.resizeStartPoint = worldPoint;
+                                this.originalShapeSize = this.getShapeSize(selectedShape);
+                            }
+                            this.updateCursor();
+                            return;
+                        }
+                    }
+                    
+                    const clickedShape = this.shapes.find(shape => {
+                        switch (shape.type) {
+                            case 'rectangle':
+                            case 'sticky':
+                                return shape.width && shape.height && 
+                                       worldPoint.x >= shape.x && worldPoint.x <= shape.x + shape.width &&
+                                       worldPoint.y >= shape.y && worldPoint.y <= shape.y + shape.height;
+                            case 'circle':
+                                const radiusX = shape.radiusX || shape.radius;
+                                const radiusY = shape.radiusY || shape.radius;
+                                if (!radiusX || !radiusY) return false;
+                                // Check if point is inside ellipse using ellipse equation
+                                const dx = worldPoint.x - shape.x;
+                                const dy = worldPoint.y - shape.y;
+                                return (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY) <= 1;
+                            case 'line':
+                            case 'arrow':
+                                return shape.endX !== undefined && shape.endY !== undefined &&
+                                       Math.abs((worldPoint.y - shape.y) * (shape.endX - shape.x) - (worldPoint.x - shape.x) * (shape.endY - shape.y)) / 
+                                       Math.sqrt((shape.endY - shape.y) ** 2 + (shape.endX - shape.x) ** 2) < 5 / this.camera.zoom;
+                            case 'text':
+                                if (!shape.text) return false;
+                                // Rough text bounds check
+                                const textHeight = shape.fontSize || 16;
+                                return worldPoint.x >= shape.x && worldPoint.x <= shape.x + shape.text.length * 8 &&
+                                       worldPoint.y >= shape.y - textHeight && worldPoint.y <= shape.y;
+                            default:
+                                return false;
+                        }
+                    });
+                    
+                    // If we clicked on an already selected shape, start moving all selected shapes
+                    if (clickedShape && clickedShape.selected) {
+                        this.isMovingObject = true;
+                        this.moveStartPoint = worldPoint;
+                        
+                        // Store original positions of all selected shapes
+                        this.originalShapePositions.clear();
+                        this.shapes.filter(s => s.selected).forEach(shape => {
+                            this.originalShapePositions.set(shape.id, this.getShapePosition(shape));
+                        });
+                        
+                        this.updateCursor();
+                    } else {
+                        // Handle multi-select with shift key
+                        if (e.shiftKey && clickedShape) {
+                            // Toggle selection of clicked shape
+                            clickedShape.selected = !clickedShape.selected;
+                            if (clickedShape.selected) {
+                                this.selectedShapeId = clickedShape.id;
+                            } else {
+                                // Find another selected shape to be the primary selection
+                                const otherSelected = this.shapes.find(s => s.selected && s.id !== clickedShape.id);
+                                this.selectedShapeId = otherSelected?.id || null;
+                            }
+                        } else {
+                            // Single select - clear others
+                            this.shapes.forEach(shape => shape.selected = shape.id === clickedShape?.id);
+                            this.selectedShapeId = clickedShape?.id || null;
+                        }
+                        this.draw();
+                    }
+                } else if (this.activeTool === 'sticky') {
+                    // Create sticky note at clicked location
+                    const text = prompt('Enter sticky note text:');
+                    const newShape = {
+                        id: this.generateId(),
+                        type: 'sticky',
+                        x: worldPoint.x,
+                        y: worldPoint.y,
+                        width: 120,
+                        height: 120,
+                        text: text || '',
+                        fontSize: this.currentFontSize,
+                        bold: this.currentBold,
+                        italic: this.currentItalic,
+                        fill: this.currentFillColor,
+                        stroke: this.currentStrokeColor,
+                        strokeWidth: this.currentStrokeWidth,
+                        selected: false
+                    };
+                    this.shapes.push(newShape);
+                    this.draw();
+                } else if (this.activeTool === 'text') {
+                    // Create text at clicked location
+                    const text = prompt('Enter text:');
+                    if (text && text.trim()) {
+                        const newShape = {
+                            id: this.generateId(),
+                            type: 'text',
+                            x: worldPoint.x,
+                            y: worldPoint.y,
+                            text: text.trim(),
+                            fontSize: this.currentFontSize,
+                            bold: this.currentBold,
+                            italic: this.currentItalic,
+                            fill: this.currentStrokeColor,
+                            stroke: this.currentStrokeColor,
+                            strokeWidth: this.currentStrokeWidth,
+                            opacity: this.currentOpacity,
+                            selected: false
+                        };
+                        this.shapes.push(newShape);
+                        this.draw();
+                    }
+                } else if (this.activeTool === 'eraser') {
+                    // Start erasing
+                    this.isErasing = true;
+                    this.eraseAtPoint(worldPoint);
+                } else if (this.activeTool === 'pen' || this.activeTool === 'highlighter') {
+                    // Start drawing path
+                    this.isDrawingPath = true;
+                    this.currentPath = {
+                        id: this.generateId(),
+                        type: this.activeTool,
+                        points: [worldPoint],
+                        stroke: this.currentStrokeColor,
+                        strokeWidth: this.activeTool === 'highlighter' ? Math.max(8, this.currentStrokeWidth) : this.currentStrokeWidth,
+                        fill: 'transparent',
+                        selected: false
+                    };
+                } else {
+                    this.isDrawing = true;
+                    this.startPoint = worldPoint;
+                }
+            }
+            
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                
+                // Handle panning
+                if (this.isPanning && this.lastPanPoint) {
+                    const deltaX = screenX - this.lastPanPoint.x;
+                    const deltaY = screenY - this.lastPanPoint.y;
+                    
+                    this.camera.x += deltaX;
+                    this.camera.y += deltaY;
+                    
+                    this.lastPanPoint = { x: screenX, y: screenY };
+                    this.draw();
+                    return;
+                }
+                
+                // Handle object movement
+                if (this.isMovingObject && this.moveStartPoint) {
+                    const currentWorld = this.screenToWorld(screenX, screenY);
+                    const deltaX = currentWorld.x - this.moveStartPoint.x;
+                    const deltaY = currentWorld.y - this.moveStartPoint.y;
+                    
+                    // Move all selected shapes
+                    this.shapes.filter(s => s.selected).forEach(shape => {
+                        const originalPos = this.originalShapePositions.get(shape.id);
+                        if (originalPos) {
+                            this.setShapePosition(shape, originalPos, deltaX, deltaY);
+                        }
+                    });
+                    this.draw();
+                    return;
+                }
+                
+                // Handle object rotation
+                if (this.isRotating && this.selectedShapeId) {
+                    const currentWorld = this.screenToWorld(screenX, screenY);
+                    const selectedShape = this.shapes.find(s => s.id === this.selectedShapeId);
+                    if (selectedShape) {
+                        const center = this.getShapeCenter(selectedShape);
+                        const currentAngle = Math.atan2(currentWorld.y - center.y, currentWorld.x - center.x);
+                        const deltaAngle = currentAngle - this.rotationStartAngle;
+                        selectedShape.rotation = this.originalRotation + deltaAngle;
+                        this.draw();
+                    }
+                    return;
+                }
+                
+                // Handle object resizing
+                if (this.isResizing && this.resizeStartPoint && this.selectedShapeId && this.resizeHandle) {
+                    const currentWorld = this.screenToWorld(screenX, screenY);
+                    const selectedShape = this.shapes.find(s => s.id === this.selectedShapeId);
+                    if (selectedShape) {
+                        this.performResize(selectedShape, currentWorld);
+                        this.draw();
+                    }
+                    return;
+                }
+                
+                // Handle erasing
+                if (this.isErasing) {
+                    const currentWorld = this.screenToWorld(screenX, screenY);
+                    this.eraseAtPoint(currentWorld);
+                    return;
+                }
+                
+                // Handle path drawing
+                if (this.isDrawingPath && this.currentPath) {
+                    const currentWorld = this.screenToWorld(screenX, screenY);
+                    this.currentPath.points.push(currentWorld);
+                    this.draw();
+                    
+                    // Draw current path being drawn
+                    this.ctx.save();
+                    this.ctx.translate(this.camera.x, this.camera.y);
+                    this.ctx.scale(this.camera.zoom, this.camera.zoom);
+                    
+                    this.ctx.strokeStyle = this.currentPath.stroke;
+                    this.ctx.lineWidth = this.currentPath.strokeWidth / this.camera.zoom;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    
+                    if (this.currentPath.type === 'highlighter') {
+                        this.ctx.globalAlpha = 0.5;
+                    }
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.currentPath.points[0].x, this.currentPath.points[0].y);
+                    for (let i = 1; i < this.currentPath.points.length; i++) {
+                        this.ctx.lineTo(this.currentPath.points[i].x, this.currentPath.points[i].y);
+                    }
+                    this.ctx.stroke();
+                    
+                    if (this.currentPath.type === 'highlighter') {
+                        this.ctx.globalAlpha = 1.0;
+                    }
+                    
+                    this.ctx.restore();
+                    return;
+                }
+                
+                if (!this.isDrawing || !this.startPoint || this.activeTool === 'select') return;
+                
+                const currentWorld = this.screenToWorld(screenX, screenY);
+                
+                this.draw();
+                
+                // Apply camera transform for preview
+                this.ctx.save();
+                this.ctx.translate(this.camera.x, this.camera.y);
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+                
+                this.ctx.strokeStyle = '#0066ff';
+                this.ctx.fillStyle = 'rgba(0, 102, 255, 0.1)';
+                this.ctx.lineWidth = 2 / this.camera.zoom;
+                this.ctx.setLineDash([5 / this.camera.zoom, 5 / this.camera.zoom]);
+                
+                switch (this.activeTool) {
+                    case 'rectangle':
+                        const width = currentWorld.x - this.startPoint.x;
+                        const height = currentWorld.y - this.startPoint.y;
+                        this.ctx.fillRect(this.startPoint.x, this.startPoint.y, width, height);
+                        this.ctx.strokeRect(this.startPoint.x, this.startPoint.y, width, height);
+                        break;
+                    case 'circle': // Now draws ellipse preview
+                        const radiusX = Math.abs(currentWorld.x - this.startPoint.x);
+                        const radiusY = Math.abs(currentWorld.y - this.startPoint.y);
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(this.startPoint.x, this.startPoint.y, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                        break;
+                    case 'line':
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.startPoint.x, this.startPoint.y);
+                        this.ctx.lineTo(currentWorld.x, currentWorld.y);
+                        this.ctx.stroke();
+                        break;
+                    case 'arrow':
+                        this.drawArrow(this.startPoint.x, this.startPoint.y, currentWorld.x, currentWorld.y);
+                        break;
+                }
+                
+                this.ctx.setLineDash([]);
+                this.ctx.restore();
+            }
+            
+            handleMouseUp(e) {
+                // Stop panning
+                if (this.isPanning) {
+                    this.isPanning = false;
+                    this.lastPanPoint = null;
+                    this.updateCursor();
+                    return;
+                }
+                
+                // Stop object movement
+                if (this.isMovingObject) {
+                    this.isMovingObject = false;
+                    this.moveStartPoint = null;
+                    this.originalShapePositions.clear();
+                    this.updateCursor();
+                    return;
+                }
+                
+                // Stop object rotation
+                if (this.isRotating) {
+                    this.isRotating = false;
+                    this.rotationStartAngle = 0;
+                    this.originalRotation = 0;
+                    this.updateCursor();
+                    return;
+                }
+                
+                // Stop object resizing
+                if (this.isResizing) {
+                    this.isResizing = false;
+                    this.resizeHandle = null;
+                    this.resizeStartPoint = null;
+                    this.originalShapeSize = null;
+                    this.updateCursor();
+                    return;
+                }
+                
+                // Stop erasing
+                if (this.isErasing) {
+                    this.isErasing = false;
+                    this.updateCursor();
+                    return;
+                }
+                
+                // Stop path drawing
+                if (this.isDrawingPath && this.currentPath) {
+                    if (this.currentPath.points.length > 1) {
+                        this.shapes.push(this.currentPath);
+                    }
+                    this.isDrawingPath = false;
+                    this.currentPath = null;
+                    this.draw();
+                    return;
+                }
+                
+                if (!this.isDrawing || !this.startPoint || this.activeTool === 'select') return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                const endWorld = this.screenToWorld(screenX, screenY);
+                
+                let newShape = null;
+                
+                switch (this.activeTool) {
+                    case 'rectangle':
+                        const width = endWorld.x - this.startPoint.x;
+                        const height = endWorld.y - this.startPoint.y;
+                        if (Math.abs(width) > 5 / this.camera.zoom && Math.abs(height) > 5 / this.camera.zoom) {
+                            newShape = {
+                                id: this.generateId(),
+                                type: 'rectangle',
+                                x: Math.min(this.startPoint.x, endWorld.x),
+                                y: Math.min(this.startPoint.y, endWorld.y),
+                                width: Math.abs(width),
+                                height: Math.abs(height),
+                                fill: this.currentFillColor,
+                                stroke: this.currentStrokeColor,
+                                strokeWidth: this.currentStrokeWidth,
+                                selected: false
+                            };
+                        }
+                        break;
+                    case 'circle': // Now creates ellipse
+                        const radiusX = Math.abs(endWorld.x - this.startPoint.x);
+                        const radiusY = Math.abs(endWorld.y - this.startPoint.y);
+                        if (radiusX > 5 / this.camera.zoom || radiusY > 5 / this.camera.zoom) {
+                            newShape = {
+                                id: this.generateId(),
+                                type: 'circle',
+                                x: this.startPoint.x,
+                                y: this.startPoint.y,
+                                radiusX: radiusX,
+                                radiusY: radiusY,
+                                fill: this.currentFillColor,
+                                stroke: this.currentStrokeColor,
+                                strokeWidth: this.currentStrokeWidth,
+                                selected: false
+                            };
+                        }
+                        break;
+                    case 'line':
+                        const distance = Math.sqrt((endWorld.x - this.startPoint.x) ** 2 + (endWorld.y - this.startPoint.y) ** 2);
+                        if (distance > 5 / this.camera.zoom) {
+                            newShape = {
+                                id: this.generateId(),
+                                type: 'line',
+                                x: this.startPoint.x,
+                                y: this.startPoint.y,
+                                endX: endWorld.x,
+                                endY: endWorld.y,
+                                fill: this.currentStrokeColor,
+                                stroke: this.currentStrokeColor,
+                                strokeWidth: this.currentStrokeWidth,
+                                selected: false
+                            };
+                        }
+                        break;
+                    case 'arrow':
+                        const arrowDistance = Math.sqrt((endWorld.x - this.startPoint.x) ** 2 + (endWorld.y - this.startPoint.y) ** 2);
+                        if (arrowDistance > 5 / this.camera.zoom) {
+                            newShape = {
+                                id: this.generateId(),
+                                type: 'arrow',
+                                x: this.startPoint.x,
+                                y: this.startPoint.y,
+                                endX: endWorld.x,
+                                endY: endWorld.y,
+                                fill: this.currentStrokeColor,
+                                stroke: this.currentStrokeColor,
+                                strokeWidth: this.currentStrokeWidth,
+                                selected: false
+                            };
+                        }
+                        break;
+                }
+                
+                if (newShape) {
+                    this.shapes.push(newShape);
+                }
+                
+                this.isDrawing = false;
+                this.startPoint = null;
+                this.draw();
+            }
+            
+            handleWheel(e) {
+                e.preventDefault();
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Get mouse position in world coordinates before zoom
+                const worldBeforeZoom = this.screenToWorld(mouseX, mouseY);
+                
+                // Calculate new zoom level
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newZoom = Math.max(0.1, Math.min(5, this.camera.zoom * zoomFactor));
+                
+                this.camera = {
+                    zoom: newZoom,
+                    x: mouseX - worldBeforeZoom.x * newZoom,
+                    y: mouseY - worldBeforeZoom.y * newZoom
+                };
+                
+                this.draw();
+            }
+            
+            handleKeyDown(e) {
+                if (e.key === ' ' || e.code === 'Space') {
+                    if (!this.spacePressed) {
+                        this.spacePressed = true;
+                        this.updateCursor();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    // Delete all selected shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected);
+                    if (selectedShapes.length > 0) {
+                        this.shapes = this.shapes.filter(shape => !shape.selected);
+                        this.selectedShapeId = null;
+                        this.draw();
+                    }
+                } else if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+                    // Copy selected shapes
+                    const selectedShapes = this.shapes.filter(s => s.selected);
+                    if (selectedShapes.length > 0) {
+                        this.clipboard = selectedShapes.map(shape => ({...shape}));
+                    }
+                    e.preventDefault();
+                } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+                    // Paste shapes
+                    if (this.clipboard.length > 0) {
+                        // Clear current selection
+                        this.shapes.forEach(shape => shape.selected = false);
+                        
+                        // Create new shapes offset by 20px
+                        const newShapes = this.clipboard.map(shape => ({
+                            ...shape,
+                            id: this.generateId(),
+                            x: shape.x + 20,
+                            y: shape.y + 20,
+                            endX: shape.endX ? shape.endX + 20 : undefined,
+                            endY: shape.endY ? shape.endY + 20 : undefined,
+                            selected: true
+                        }));
+                        
+                        this.shapes.push(...newShapes);
+                        this.selectedShapeId = newShapes[0]?.id || null;
+                        this.draw();
+                    }
+                    e.preventDefault();
+                }
+            }
+            
+            handleKeyUp(e) {
+                if (e.key === ' ' || e.code === 'Space') {
+                    this.spacePressed = false;
+                    this.updateCursor();
+                    e.preventDefault();
+                }
+            }
+        }
+        
+        // Initialize the app when the page loads
+        window.addEventListener('load', () => {
+            new FigJamClone();
+        });
+    </script>
+</body>
+</html>
